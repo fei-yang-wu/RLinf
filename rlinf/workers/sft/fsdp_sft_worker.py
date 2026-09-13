@@ -35,6 +35,7 @@ from rlinf.utils.utils import clear_memory
 class FSDPSftWorker(FSDPModelManager, Worker):
     def __init__(self, cfg: DictConfig):
         Worker.__init__(self)
+        self.initialize_sft_collectives(cfg)
         super().__init__(cfg.actor, self._world_size, self._rank)
 
         self.cfg = cfg
@@ -80,6 +81,9 @@ class FSDPSftWorker(FSDPModelManager, Worker):
         # set the dataloader epoch and data iter offset
         self._data_epoch = 0
         self._data_iter_offset = 0
+
+    def initialize_sft_collectives(self, cfg: DictConfig) -> None:
+        """Allow a model adapter to initialize collectives after worker rank setup."""
 
     def init_worker(self):
         self.setup_model_and_optimizer()
