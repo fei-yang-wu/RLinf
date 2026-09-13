@@ -30,6 +30,16 @@ class FSDPVlaSftWorker(FSDPSftWorker):
         super().__init__(cfg)
 
     def build_dataloader(self, data_paths: Any, eval_dataset: bool = False):
+        if SupportedModel(self.cfg.actor.model.model_type) == SupportedModel.GR00T_N1D7:
+            from rlinf.models.embodiment.gr00t.gr00t_n1d7.sft import (
+                build_sft_dataloader,
+            )
+
+            if self.cfg.actor.model.get("gr00t_sft") is None:
+                raise ValueError("GR00T SFT requires actor.model.gr00t_sft settings")
+            return build_sft_dataloader(
+                self.cfg, self._world_size, data_paths, eval_dataset
+            )
         if SupportedModel(self.cfg.actor.model.model_type) in [SupportedModel.OPENPI]:
             repo_id = resolve_lerobot_repo_id(data_paths)
             if repo_id is None:
@@ -103,6 +113,11 @@ class FSDPVlaSftWorker(FSDPSftWorker):
 
     def save_checkpoint(self, save_path: str, step: int = 0) -> None:
         super().save_checkpoint(save_path, step)
+
+        if SupportedModel(self.cfg.actor.model.model_type) == SupportedModel.GR00T_N1D7:
+            if self._rank == 0:
+                self.data_config.save_pretrained(os.path.join(save_path, "processor"))
+            torch.distributed.barrier()
 
         if isinstance(self.data_loader, StatefulDataLoader):
             state = self.data_loader.state_dict()

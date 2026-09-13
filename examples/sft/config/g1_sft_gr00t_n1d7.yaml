@@ -1,0 +1,72 @@
+defaults:
+  - training_backend/fsdp@actor.fsdp_config
+  - override hydra/job_logging: stdout
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+
+cluster:
+  num_nodes: 1
+  component_placement:
+    actor: 0-0
+
+runner:
+  task_type: sft
+  logger:
+    log_path: ../results
+    project_name: gr00t-sft
+    experiment_name: g1-pipette
+    logger_backends: [tensorboard]
+  max_epochs: 1
+  max_steps: 1
+  val_check_interval: -1
+  save_interval: 1
+
+data:
+  train_data_paths: /path/to/lerobot-v2-dataset
+
+actor:
+  group_name: ActorGroup
+  training_backend: fsdp
+  micro_batch_size: 1
+  global_batch_size: 1
+  seed: 42
+  model:
+    model_type: gr00t_n1d7
+    model_path: /path/to/GR00T-N1.7-3B
+    precision: bf16
+    is_lora: false
+    embodiment_tag: new_embodiment
+    gr00t_sft:
+      processor_path: /path/to/native-processor
+      backbone_revision: 9ce19a195e423419c349abfc86fd07178b230561
+      tune_llm: false
+      tune_visual: false
+      tune_projector: true
+      tune_diffusion_model: false
+      tune_vlln: false
+      state_dropout_prob: 0.0
+      batches_per_epoch: 1
+      shard_size: 32
+      num_shards_per_epoch: 1
+      episode_sampling_rate: 1.0
+  optim:
+    lr: 1.0e-5
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    adam_eps: 1.0e-8
+    weight_decay: 1.0e-5
+    clip_grad: 1.0
+    lr_scheduler: constant
+    lr_warmup_steps: 0
+    lr_decay_steps: 1
+  fsdp_config:
+    strategy: fsdp
+    sharding_strategy: no_shard
+    use_orig_params: true
+    mixed_precision:
+      param_dtype: bf16
+      reduce_dtype: fp32
+      buffer_dtype: bf16
