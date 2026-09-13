@@ -27,6 +27,17 @@ from rlinf.workers.sft.fsdp_sft_worker import FSDPSftWorker
 
 class FSDPVlaSftWorker(FSDPSftWorker):
     def __init__(self, cfg: DictConfig):
+        # Native GR00T chooses collective tensor devices from the backend name.
+        # Initialize explicit NCCL before device-mesh auto-init reports "undefined".
+        if (
+            SupportedModel(cfg.actor.model.model_type) == SupportedModel.GR00T_N1D7
+            and not torch.distributed.is_initialized()
+        ):
+            local_rank = int(os.environ["LOCAL_RANK"])
+            torch.cuda.set_device(local_rank)
+            torch.distributed.init_process_group(
+                backend="nccl", device_id=torch.device("cuda", local_rank)
+            )
         super().__init__(cfg)
 
     def build_dataloader(self, data_paths: Any, eval_dataset: bool = False):
